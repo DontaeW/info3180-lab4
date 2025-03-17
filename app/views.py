@@ -119,6 +119,14 @@ def login():
 def load_user(id):
     return db.session.execute(db.select(UserProfile).filter_by(id=id)).scalar()
 
+
+@app.route('/logout')
+@login_required  # Ensure only logged-in users can access the logout route
+def logout():
+    logout_user()  # Log out the user
+    flash('You have been logged out.', 'success!')  # Flash success message
+    return redirect(url_for('home'))  # Redirect to the home page
+
 ###
 # The functions below should be applicable to all Flask apps.
 ###
