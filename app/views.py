@@ -3,13 +3,49 @@ from app import app, db, login_manager
 from flask import render_template, request, redirect, url_for, flash, session, abort
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash
 from app.models import UserProfile
+from flask import send_from_directory
 from app.forms import LoginForm
+from app.forms import UploadForm
+
 
 
 ###
 # Routing for your application.
 ###
+
+
+@app.route('/files')
+@login_required  # Ensure only logged-in users can access the page
+def files():
+    # Retrieve all uploaded files
+    def get_uploaded_images():
+        rootdir = os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER'])
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif']
+        image_urls = []
+        for subdir, _, files in os.walk(rootdir):
+            for file in files:
+                if any(file.lower().endswith(ext) for ext in valid_extensions):
+                    image_urls.append(url_for('get_image', filename=file))
+        return image_urls
+
+    # Get the URLs of the uploaded images
+    image_urls = get_uploaded_images()
+    return render_template('files.html', image_urls=image_urls)
+
+
+
+
+
+@app.route('/uploads/<filename>')
+def get_image(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+
+
+
 
 @app.route('/')
 def home():
@@ -26,20 +62,28 @@ def about():
 @app.route('/upload', methods=['POST', 'GET'])
 def upload():
     # Instantiate your form class
-
+    form = UploadForm()
     # Validate file upload on submit
     if form.validate_on_submit():
         # Get file data and save to your uploads folder
-        f_data = form.file.data
-        filename = secure_filename(fr.filename)
+        file_data = form.file.data
+        filename = secure_filename(file_data.filename)
 
-        f_data.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file_data.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
         flash('File uploaded!', 'success')
         # Get file data and save to your uploads folder
         return redirect(url_for('files')) # Update this to redirect the user to a route that displays all uploaded image files
 
     return render_template('upload.html', form=form)
+
+
+
+
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')  # Set the uploads directory
+
+
+
 
 
 @app.route('/login', methods=['POST', 'GET'])
